@@ -127,7 +127,10 @@ def capture_display_cv(args):
 
         # fpsの計算
         tick = time.time()
-        fps = 1.0 / (tick - tick_pre)
+        if tick == tick_pre:
+            fps = 0
+        else:
+            fps = 1.0 / (tick - tick_pre)
         tick_pre = tick
         info = f"x:{max_xy_idx[0]:4d} y:{max_xy_idx[1]:4d}  {fps:.2f} fps"
         cv2.putText(img_draw, info, (11, 21), font, 0.5, (0, 0, 0))
