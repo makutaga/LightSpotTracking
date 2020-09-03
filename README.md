@@ -1,1 +1,1 @@
-# LightSpotTracking
+# SpotTracking
