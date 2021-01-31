@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui
 
 import cvcam
 
@@ -40,7 +41,64 @@ def capture_display_cv(args):
     cv2.destroyAllWindows()
 
 
+class myImage():
+    def __init__(self, device_num):
+        self.capture = cv2.VideoCapture(device_num)
+
+    def getImage(self):
+        ret, img = self.capture.read()
+        print(img.shape)
+        return img
+
+    def __del__(self):
+        self.capture.release()
+        # cv2.destroyAllWindows()
+
+
+class MyWidget(QtGui.QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+        self.cam = myImage(1)
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.update)
+        self.timer.start(50)
+
+    def initUI(self):
+        self.win = pg.GraphicsLayoutWidget()
+        self.setCentralWidget(self.win)
+        self.view = self.win.addViewBox()
+
+        self.view.setAspectLocked(True)
+        self.image_item = pg.ImageItem()
+        self.view.addItem(self.image_item)
+
+        self.view2 = self.win.addViewBox()
+        self.view2.setAspectLocked(True)
+        self.image_item2 = pg.ImageItem()
+        self.view2.addItem(self.image_item2)
+
+        self.show()
+
+    def update(self):
+        img = self.cam.getImage()
+        # self.image_item.setImage(img)
+        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+        self.image_item.setOpts(axisOrder='row-major')
+        self.image_item.setImage(np.flipud(img))
+
+        imgYUV = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
+        imgY = imgYUV[:, :, 0]
+        
+        edge = cv2.Laplacian(imgY, cv2.CV_64F)
+
+        self.image_item2.setOpts(axisOrder='row-major')
+        self.image_item2.setImage(np.flipud(edge))
+
+
 def main(argv):
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--scan',
                         help="Scan capture devices", action="store_true")
@@ -51,10 +109,16 @@ def main(argv):
     args = parser.parse_args(argv)
 
     if args.scan:
-        cams = check_cameras()
+        cams = cvcam.check_cameras()
         print("Available caputre devices:", cams)
     else:
-        capture_display_cv(args)
+        app = QtGui.QApplication(argv)
+        win = MyWidget()
+
+        if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PY_QTVERSION'):
+            QtGui.QApplication.instance().exec_()
+            # capture_display_cv(args)
+
 
 if __name__ == "__main__":
     print("OpenCV version:", cv2.__version__)
