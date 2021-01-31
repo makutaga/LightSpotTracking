@@ -42,11 +42,18 @@ def capture_display_cv(args):
 
 
 class myImage():
-    def __init__(self, device_num):
-        self.capture = cv2.VideoCapture(device_num)
+    def __init__(self, args):
+        self.capture_device_id = args.capture_device
+        self.capture = cv2.VideoCapture(self.capture_device_id)
+        self.cap_width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.cap_height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.cap_fps = int(self.capture.get(cv2.CAP_PROP_FPS))
+        self.image_size = (int(self.cap_width * args.resize_factor),
+                           int(self.cap_height * args.resize_factor))
 
     def getImage(self):
         ret, img = self.capture.read()
+        img = cv2.resize(img, self.image_size)
         print(img.shape)
         return img
 
@@ -56,10 +63,10 @@ class myImage():
 
 
 class MyWidget(QtGui.QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, args, parent=None):
         super().__init__(parent)
         self.initUI()
-        self.cam = myImage(1)
+        self.cam = myImage(args)
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update)
@@ -90,8 +97,9 @@ class MyWidget(QtGui.QMainWindow):
 
         imgYUV = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
         imgY = imgYUV[:, :, 0]
-        
-        edge = cv2.Laplacian(imgY, cv2.CV_64F)
+
+        # edge = cv2.Laplacian(imgY, cv2.CV_64F)
+        edge = cv2.Canny(imgY, 100, 200)
 
         self.image_item2.setOpts(axisOrder='row-major')
         self.image_item2.setImage(np.flipud(edge))
@@ -102,6 +110,9 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--scan',
                         help="Scan capture devices", action="store_true")
+    parser.add_argument('-r', '--resize-factor',
+                        type=float, default=1.0,
+                        help="Resize factor (default: 1)")
     parser.add_argument('-c', '--capture-device',
                         type=int, default=DEFAULT_CAPTURE_DEVICE,
                         help="# of capture device"
@@ -113,10 +124,11 @@ def main(argv):
         print("Available caputre devices:", cams)
     else:
         app = QtGui.QApplication(argv)
-        win = MyWidget()
+        win = MyWidget(args)
 
         if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PY_QTVERSION'):
-            QtGui.QApplication.instance().exec_()
+            # QtGui.QApplication.instance().exec_()
+            app.exec_()
             # capture_display_cv(args)
 
 
