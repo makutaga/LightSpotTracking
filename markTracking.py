@@ -3,6 +3,7 @@
 import time
 import argparse
 import sys
+import curses
 
 import numpy as np
 import cv2
@@ -70,7 +71,11 @@ class MyWidget(QtGui.QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update)
-        self.timer.start(50)
+        self.timer.start(40)
+
+        self.template1 = cv2.imread('mark1.png', flags=0)
+        self.template1 = cv2.resize(self.template1, (32, 32))
+
 
     def initUI(self):
         self.win = pg.GraphicsLayoutWidget()
@@ -86,6 +91,8 @@ class MyWidget(QtGui.QMainWindow):
         self.image_item2 = pg.ImageItem()
         self.view2.addItem(self.image_item2)
 
+        self.arrow = pg.ArrowItem()
+        self.view.addItem(self.arrow)
         self.show()
 
     def update(self):
@@ -99,10 +106,16 @@ class MyWidget(QtGui.QMainWindow):
         imgY = imgYUV[:, :, 0]
 
         # edge = cv2.Laplacian(imgY, cv2.CV_64F)
-        edge = cv2.Canny(imgY, 100, 200)
+        # edge = cv2.Canny(imgY, 100, 200)
+
+        tm_res = cv2.matchTemplate(imgY, self.template1, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(tm_res)
+        print(max_loc, max_val)
+        tm_size = self.template1.shape
+        self.arrow.setPos(max_loc[0] + tm_size[1]/2, img.shape[0] - max_loc[1] - tm_size[0]/2)
 
         self.image_item2.setOpts(axisOrder='row-major')
-        self.image_item2.setImage(np.flipud(edge))
+        self.image_item2.setImage(np.flipud(tm_res))
 
 
 def main(argv):
